@@ -28,7 +28,7 @@ public class App
                 // Get location from command-line argument
                 String locationQuery = String.join(" ", args);
                 String geocodeUrl = "https://geocoding-api.open-meteo.com/v1/search?name=" + 
-                    java.net.URLEncoder.encode(locationQuery, "UTF-8") + "&count=1&language=en&format=json";
+                    java.net.URLEncoder.encode(locationQuery, "UTF-8") + "&count=10&language=en&format=json";
                 
                 HttpRequest geoRequest = HttpRequest.newBuilder()
                     .uri(URI.create(geocodeUrl))
@@ -47,10 +47,12 @@ public class App
                 
                 if (results == null || results.isEmpty()) {
                     System.err.println("Location not found: " + locationQuery);
-                    System.err.println("Try a different format, e.g., 'Pomona, CA' or 'London, UK'");
+                    System.err.println("Try a different format, e.g., 'Pomona' or 'London'");
+                    System.err.println("For US cities with common names, try: 'CityName StateName'");
                     return;
                 }
                 
+                // Use the first result (best match)
                 Map<String, Object> location = results.get(0);
                 lat = ((Number) location.get("latitude")).doubleValue();
                 lon = ((Number) location.get("longitude")).doubleValue();

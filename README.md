@@ -29,13 +29,16 @@ mvn exec:java
 mvn exec:java -Dexec.args="London"
 mvn exec:java -Dexec.args="Pomona"
 mvn exec:java -Dexec.args="Tokyo"
-mvn exec:java -Dexec.args="Paris France"
+mvn exec:java -Dexec.args="Paris"
+mvn exec:java -Dexec.args="New York"
+mvn exec:java -Dexec.args="Los Angeles"
 ```
 
-**Note:** The app uses Open-Meteo's geocoding API, so just use the city name (with optional country). Common formats that work:
-- Simple: `London`, `Tokyo`, `Paris`
-- With country: `Paris France`, `London UK`
-- US cities: Most work with just the city name (e.g., `Pomona`, `Miami`)
+**Note:** The app uses Open-Meteo's geocoding API. **Best practice: Use just the city name**.
+- ✅ Works well: `London`, `Tokyo`, `Paris`, `Miami`, `Sydney`
+- ✅ Multi-word cities: `New York`, `Los Angeles`, `San Francisco`
+- ❌ Avoid adding country names: "Paris France" won't work, just use `Paris`
+- 💡 For common US city names, you can add the state: `Portland Oregon` or `Portland Maine`
 
 ### Alternative methods:
 
