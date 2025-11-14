@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -40,10 +40,8 @@ public class App
                     return;
                 }
                 
-                @SuppressWarnings("unchecked")
-                Map<String, Object> geoData = mapper.readValue(geoResponse.body(), Map.class);
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> results = (List<Map<String, Object>>) geoData.get("results");
+                GeocodingResponse geoData = mapper.readValue(geoResponse.body(), GeocodingResponse.class);
+                List<LocationResult> results = geoData.results;
                 
                 if (results == null || results.isEmpty()) {
                     System.err.println("Location not found: " + locationQuery);
@@ -53,12 +51,12 @@ public class App
                 }
                 
                 // Use the first result (best match)
-                Map<String, Object> location = results.get(0);
-                lat = ((Number) location.get("latitude")).doubleValue();
-                lon = ((Number) location.get("longitude")).doubleValue();
-                city = (String) location.get("name");
-                region = (String) location.getOrDefault("admin1", "");
-                country = (String) location.get("country");
+                LocationResult location = results.get(0);
+                lat = location.latitude;
+                lon = location.longitude;
+                city = location.name;
+                region = location.admin1 != null ? location.admin1 : "";
+                country = location.country;
             } else {
                 // Get location from IP (default behavior)
                 HttpRequest locRequest = HttpRequest.newBuilder()
@@ -69,18 +67,16 @@ public class App
                     System.err.println("Failed to get location");
                     return;
                 }
-                @SuppressWarnings("unchecked")
-                Map<String, Object> locData = mapper.readValue(locResponse.body(), Map.class);
-                String status = (String) locData.get("status");
-                if (!"success".equals(status)) {
+                IpLocationResponse locData = mapper.readValue(locResponse.body(), IpLocationResponse.class);
+                if (!"success".equals(locData.status)) {
                     System.err.println("Location service error");
                     return;
                 }
-                lat = ((Number) locData.get("lat")).doubleValue();
-                lon = ((Number) locData.get("lon")).doubleValue();
-                city = (String) locData.get("city");
-                region = (String) locData.get("regionName");
-                country = (String) locData.get("country");
+                lat = locData.lat;
+                lon = locData.lon;
+                city = locData.city;
+                region = locData.regionName;
+                country = locData.country;
             }
 
             // Get weather
@@ -94,18 +90,12 @@ public class App
                 System.err.println("Response: " + weatherResponse.body());
                 return;
             }
-            @SuppressWarnings("unchecked")
-            Map<String, Object> weatherData = mapper.readValue(weatherResponse.body(), Map.class);
-            @SuppressWarnings("unchecked")
-            Map<String, List<?>> daily = (Map<String, List<?>>) weatherData.get("daily");
-            @SuppressWarnings("unchecked")
-            List<Number> maxTemps = (List<Number>) daily.get("temperature_2m_max");
-            @SuppressWarnings("unchecked")
-            List<Number> minTemps = (List<Number>) daily.get("temperature_2m_min");
-            @SuppressWarnings("unchecked")
-            List<Number> weatherCodes = (List<Number>) daily.get("weathercode");
-            @SuppressWarnings("unchecked")
-            List<String> dates = (List<String>) daily.get("time");
+            WeatherResponse weatherData = mapper.readValue(weatherResponse.body(), WeatherResponse.class);
+            DailyWeather daily = weatherData.daily;
+            List<Double> maxTemps = daily.temperature_2m_max;
+            List<Double> minTemps = daily.temperature_2m_min;
+            List<Integer> weatherCodes = daily.weathercode;
+            List<String> dates = daily.time;
 
             // Print header
             System.out.println("╔═══════════════════════════════════════════════════════╗");
@@ -121,9 +111,9 @@ public class App
             DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", Locale.ENGLISH);
 
             for (int i = 0; i < 7; i++) {
-                double low = minTemps.get(i).doubleValue();
-                double high = maxTemps.get(i).doubleValue();
-                int code = weatherCodes.get(i).intValue();
+                double low = minTemps.get(i);
+                double high = maxTemps.get(i);
+                int code = weatherCodes.get(i);
                 String condition = getCondition(code);
                 String emoji = getWeatherEmoji(code);
                 
@@ -149,6 +139,45 @@ public class App
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    // Model classes for API responses
+    
+    static class LocationResult {
+        public String name;
+        public double latitude;
+        public double longitude;
+        public String admin1;
+        public String country;
+    }
+    
+    static class GeocodingResponse {
+        public List<LocationResult> results;
+    }
+    
+    static class DailyWeather {
+        public List<String> time;
+        
+        @JsonProperty("temperature_2m_max")
+        public List<Double> temperature_2m_max;
+        
+        @JsonProperty("temperature_2m_min")
+        public List<Double> temperature_2m_min;
+        
+        public List<Integer> weathercode;
+    }
+    
+    static class WeatherResponse {
+        public DailyWeather daily;
+    }
+    
+    static class IpLocationResponse {
+        public String status;
+        public double lat;
+        public double lon;
+        public String city;
+        public String regionName;
+        public String country;
     }
 
     private static String getCondition(int code) {
