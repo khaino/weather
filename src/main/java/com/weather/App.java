@@ -12,8 +12,7 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Hello world!
- *
+ * Weather App - Get weather forecast for any location
  */
 public class App 
 {
@@ -22,27 +21,65 @@ public class App
             HttpClient client = HttpClient.newHttpClient();
             ObjectMapper mapper = new ObjectMapper();
 
-            // Get location from IP
-            HttpRequest locRequest = HttpRequest.newBuilder()
-                .uri(URI.create("http://ip-api.com/json"))
-                .build();
-            HttpResponse<String> locResponse = client.send(locRequest, HttpResponse.BodyHandlers.ofString());
-            if (locResponse.statusCode() != 200) {
-                System.err.println("Failed to get location");
-                return;
+            double lat, lon;
+            String city, region, country;
+
+            if (args.length > 0) {
+                // Get location from command-line argument
+                String locationQuery = String.join(" ", args);
+                String geocodeUrl = "https://geocoding-api.open-meteo.com/v1/search?name=" + 
+                    java.net.URLEncoder.encode(locationQuery, "UTF-8") + "&count=1&language=en&format=json";
+                
+                HttpRequest geoRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(geocodeUrl))
+                    .build();
+                HttpResponse<String> geoResponse = client.send(geoRequest, HttpResponse.BodyHandlers.ofString());
+                
+                if (geoResponse.statusCode() != 200) {
+                    System.err.println("Failed to geocode location: " + locationQuery);
+                    return;
+                }
+                
+                @SuppressWarnings("unchecked")
+                Map<String, Object> geoData = mapper.readValue(geoResponse.body(), Map.class);
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> results = (List<Map<String, Object>>) geoData.get("results");
+                
+                if (results == null || results.isEmpty()) {
+                    System.err.println("Location not found: " + locationQuery);
+                    System.err.println("Try a different format, e.g., 'Pomona, CA' or 'London, UK'");
+                    return;
+                }
+                
+                Map<String, Object> location = results.get(0);
+                lat = ((Number) location.get("latitude")).doubleValue();
+                lon = ((Number) location.get("longitude")).doubleValue();
+                city = (String) location.get("name");
+                region = (String) location.getOrDefault("admin1", "");
+                country = (String) location.get("country");
+            } else {
+                // Get location from IP (default behavior)
+                HttpRequest locRequest = HttpRequest.newBuilder()
+                    .uri(URI.create("http://ip-api.com/json"))
+                    .build();
+                HttpResponse<String> locResponse = client.send(locRequest, HttpResponse.BodyHandlers.ofString());
+                if (locResponse.statusCode() != 200) {
+                    System.err.println("Failed to get location");
+                    return;
+                }
+                @SuppressWarnings("unchecked")
+                Map<String, Object> locData = mapper.readValue(locResponse.body(), Map.class);
+                String status = (String) locData.get("status");
+                if (!"success".equals(status)) {
+                    System.err.println("Location service error");
+                    return;
+                }
+                lat = ((Number) locData.get("lat")).doubleValue();
+                lon = ((Number) locData.get("lon")).doubleValue();
+                city = (String) locData.get("city");
+                region = (String) locData.get("regionName");
+                country = (String) locData.get("country");
             }
-            @SuppressWarnings("unchecked")
-            Map<String, Object> locData = mapper.readValue(locResponse.body(), Map.class);
-            String status = (String) locData.get("status");
-            if (!"success".equals(status)) {
-                System.err.println("Location service error");
-                return;
-            }
-            double lat = ((Number) locData.get("lat")).doubleValue();
-            double lon = ((Number) locData.get("lon")).doubleValue();
-            String city = (String) locData.get("city");
-            String region = (String) locData.get("regionName");
-            String country = (String) locData.get("country");
 
             // Get weather
             String weatherUrl = String.format("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&temperature_unit=celsius", lat, lon);

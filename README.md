@@ -18,41 +18,72 @@ A simple Java Maven project that fetches current location via IP geolocation and
    ```
 
 ## Running
-Execute the main class using Maven (recommended, simpler):
+
+### Get weather for your current location (via IP):
 ```
 mvn exec:java
 ```
 
-Alternatively, use the manual classpath (if preferred):
+### Get weather for a specific location:
+```
+mvn exec:java -Dexec.args="London"
+mvn exec:java -Dexec.args="Pomona"
+mvn exec:java -Dexec.args="Tokyo"
+mvn exec:java -Dexec.args="Paris France"
+```
+
+**Note:** The app uses Open-Meteo's geocoding API, so just use the city name (with optional country). Common formats that work:
+- Simple: `London`, `Tokyo`, `Paris`
+- With country: `Paris France`, `London UK`
+- US cities: Most work with just the city name (e.g., `Pomona`, `Miami`)
+
+### Alternative methods:
+
+Using manual classpath:
 ```
 java -cp "target/classes:$(mvn -q dependency:build-classpath | grep -o '/.*')" com.weather.App
+java -cp "target/classes:$(mvn -q dependency:build-classpath | grep -o '/.*')" com.weather.App "London"
 ```
 
 Or, if using an IDE (e.g., IntelliJ, Eclipse, VS Code with Java extensions):
 - Open the project as a Maven project.
-- Run the `com.weather.App` class directly (or `mvn exec:java` via terminal).
+- Run the `com.weather.App` class directly.
+- To pass arguments, configure run arguments in your IDE (e.g., "London" or "Pomona").
 
 ### Expected Output
-The app prints location and daily forecast based on your public IP:
+The app displays a beautiful formatted forecast with emojis:
 ```
-Location: [City], [State/Region], [Country]
-Today
-Low: [temp] C
-High: [temp] C
-[Condition e.g., Rain]
------
-Day 1
-Low: [temp] C
-High: [temp] C
-[Condition]
------
-... (up to Day 6)
+╔═══════════════════════════════════════════════════════╗
+║           WEATHER FORECAST                            ║
+╚═══════════════════════════════════════════════════════╝
+
+📍 Location: London, England, United Kingdom
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗓️  TODAY (Friday, November 14, 2025)
+    🌡️  Low:  13°C  |  High: 16°C
+    🌦️  Condition: Showers
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 NEXT 7 DAYS
+
+📆 Saturday, November 15
+    🌡️  11°C - 15°C  |  ☁️  Overcast
+
+📆 Sunday, November 16
+    🌡️  7°C - 13°C  |  🌧️  Rain
+... (continues for 7 days)
 ```
 
 ## How It Works
-- **Location**: Uses free ip-api.com to geolocate via IP (no key needed).
-- **Weather**: Queries Open-Meteo forecast API for lat/lon, fetching daily max/min temps and weather codes (mapped to descriptions like "Clear sky", "Rain").
-- Temps in Celsius; conditions simplified from WMO codes.
+- **Location Detection**:
+  - **Default (no arguments)**: Uses ip-api.com to geolocate via your public IP.
+  - **With arguments**: Uses Open-Meteo's free geocoding API to convert location names to coordinates.
+- **Weather Data**: Queries Open-Meteo forecast API for lat/lon, fetching daily max/min temps and weather codes.
+- **Display**: Beautiful formatted output with Unicode box drawing and weather emojis (☀️ ☁️ 🌧️ ⛈️).
+- Temps in Celsius; conditions mapped from WMO weather codes.
 
 ## Customization
 - Hardcode location: Edit `src/main/java/com/weather/App.java`, replace IP fetch with fixed lat/lon.
