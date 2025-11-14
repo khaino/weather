@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -143,6 +144,7 @@ public class App
 
     // Model classes for API responses
     
+    @JsonIgnoreProperties(ignoreUnknown = true)
     static class LocationResult {
         public String name;
         public double latitude;
@@ -151,10 +153,12 @@ public class App
         public String country;
     }
     
+    @JsonIgnoreProperties(ignoreUnknown = true)
     static class GeocodingResponse {
         public List<LocationResult> results;
     }
     
+    @JsonIgnoreProperties(ignoreUnknown = true)
     static class DailyWeather {
         public List<String> time;
         
@@ -167,10 +171,12 @@ public class App
         public List<Integer> weathercode;
     }
     
+    @JsonIgnoreProperties(ignoreUnknown = true)
     static class WeatherResponse {
         public DailyWeather daily;
     }
     
+    @JsonIgnoreProperties(ignoreUnknown = true)
     static class IpLocationResponse {
         public String status;
         public double lat;
