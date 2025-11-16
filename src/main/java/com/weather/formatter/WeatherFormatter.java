@@ -29,6 +29,8 @@ public class WeatherFormatter {
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
     private static final DateTimeFormatter TIME_FORMATTER = 
         DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+    private static final DateTimeFormatter COMPACT_TIME_FORMATTER = 
+        DateTimeFormatter.ofPattern("ha", Locale.ENGLISH);
     private static final DateTimeFormatter DAY_OF_WEEK_FORMATTER = 
         DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.ENGLISH);
     
@@ -47,7 +49,7 @@ public class WeatherFormatter {
         StringBuilder sb = new StringBuilder();
         
         sb.append(formatHeader(location));
-        sb.append(formatTodayWeather(weatherData.daily));
+        sb.append(formatTodayWeather(weatherData.daily, weatherData.timezone));
         sb.append(formatHourlyForecast(weatherData.hourly, weatherData.timezone));
         sb.append(formatWeeklyForecast(weatherData.daily));
         
@@ -67,7 +69,7 @@ public class WeatherFormatter {
         return sb.toString();
     }
 
-    private String formatTodayWeather(DailyWeather daily) {
+    private String formatTodayWeather(DailyWeather daily, String timezone) {
         StringBuilder sb = new StringBuilder();
         
         double todayLow = daily.temperature_2m_min.get(0);
@@ -79,6 +81,11 @@ public class WeatherFormatter {
         LocalDate today = LocalDate.parse(daily.time.get(0), DATE_FORMATTER);
         String todayFormatted = today.format(FULL_DATE_FORMATTER);
         
+        // Get current time in location's timezone
+        ZoneId zoneId = ZoneId.of(timezone);
+        ZonedDateTime now = ZonedDateTime.now(zoneId);
+        String currentTime = now.format(TIME_FORMATTER);
+        
         // Sunrise/Sunset
         String sunrise = daily.sunrise.get(0).substring(11, 16); // Extract HH:MM
         String sunset = daily.sunset.get(0).substring(11, 16);
@@ -89,7 +96,7 @@ public class WeatherFormatter {
         int windDir = daily.wind_direction_10m_dominant.get(0);
         double uvIndex = daily.uv_index_max.get(0);
         
-        sb.append("🗓️  TODAY (").append(todayFormatted).append(")\n");
+        sb.append("🗓️  TODAY (").append(todayFormatted).append(" - ").append(currentTime).append(")\n");
         sb.append(String.format("    🌡️  Low: %.0f%s  |  High: %.0f%s%n", 
             todayLow, tempSymbol, todayHigh, tempSymbol));
         sb.append(String.format("    %s  %s", todayEmoji, todayCondition));
@@ -118,28 +125,76 @@ public class WeatherFormatter {
         // Get current time in the location's timezone
         ZoneId zoneId = ZoneId.of(timezone);
         ZonedDateTime now = ZonedDateTime.now(zoneId);
-        int hourCount = 0;
         
+        // Collect data for next 12 hours
+        String[] times = new String[12];
+        String[] emojis = new String[12];
+        String[] temps = new String[12];
+        String[] feelsLikes = new String[12];
+        String[] precips = new String[12];
+        String[] humidities = new String[12];
+        
+        int hourCount = 0;
         for (int i = 0; i < hourly.time.size() && hourCount < 12; i++) {
-            // Parse the time string and add timezone information
             LocalDateTime localHourTime = LocalDateTime.parse(hourly.time.get(i), HOUR_FORMATTER);
             ZonedDateTime hourTime = localHourTime.atZone(zoneId);
             
             if (hourTime.isAfter(now) || hourTime.isEqual(now)) {
-                double temp = hourly.temperature_2m.get(i);
-                double feelsLike = hourly.apparent_temperature.get(i);
-                int code = hourly.weathercode.get(i);
-                int precip = hourly.precipitation_probability.get(i);
-                int humidity = hourly.relative_humidity_2m.get(i);
-                
-                String timeStr = hourTime.format(TIME_FORMATTER);
-                String emoji = WeatherCodeMapper.getWeatherEmoji(code);
-                
-                sb.append(String.format("   %8s  %s  %.0f%s (feels %.0f%s)  💧%d%%  💦%d%%%n",
-                    timeStr, emoji, temp, tempSymbol, feelsLike, tempSymbol, precip, humidity));
+                times[hourCount] = hourTime.format(COMPACT_TIME_FORMATTER);
+                emojis[hourCount] = WeatherCodeMapper.getWeatherEmoji(hourly.weathercode.get(i));
+                temps[hourCount] = String.format("%.0f%s", hourly.temperature_2m.get(i), tempSymbol);
+                feelsLikes[hourCount] = String.format("%.0f%s", hourly.apparent_temperature.get(i), tempSymbol);
+                precips[hourCount] = String.format("%d%%", hourly.precipitation_probability.get(i));
+                humidities[hourCount] = String.format("%d%%", hourly.relative_humidity_2m.get(i));
                 hourCount++;
             }
         }
+        
+        // Build horizontal display with fixed column width
+        int colWidth = 7;
+        
+        // Time row
+        sb.append("Time:   ");
+        for (int i = 0; i < hourCount; i++) {
+            sb.append(String.format("%" + colWidth + "s", times[i]));
+        }
+        sb.append("\n");
+        
+        // Weather emoji row
+        sb.append("Weather:");
+        for (int i = 0; i < hourCount; i++) {
+            sb.append(String.format("%" + colWidth + "s", emojis[i]));
+        }
+        sb.append("\n");
+        
+        // Temperature row
+        sb.append("Temp:   ");
+        for (int i = 0; i < hourCount; i++) {
+            sb.append(String.format("%" + colWidth + "s", temps[i]));
+        }
+        sb.append("\n");
+        
+        // Feels like row
+        sb.append("Feels:  ");
+        for (int i = 0; i < hourCount; i++) {
+            sb.append(String.format("%" + colWidth + "s", feelsLikes[i]));
+        }
+        sb.append("\n");
+        
+        // Precipitation row
+        sb.append("Precip: ");
+        for (int i = 0; i < hourCount; i++) {
+            sb.append(String.format("%" + colWidth + "s", precips[i]));
+        }
+        sb.append("\n");
+        
+        // Humidity row
+        sb.append("Humid:  ");
+        for (int i = 0; i < hourCount; i++) {
+            sb.append(String.format("%" + colWidth + "s", humidities[i]));
+        }
+        sb.append("\n");
+        
         sb.append("\n");
         sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         sb.append("\n");
