@@ -10,6 +10,8 @@ import com.weather.mapper.WindDirectionMapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
@@ -46,7 +48,7 @@ public class WeatherFormatter {
         
         sb.append(formatHeader(location));
         sb.append(formatTodayWeather(weatherData.daily));
-        sb.append(formatHourlyForecast(weatherData.hourly));
+        sb.append(formatHourlyForecast(weatherData.hourly, weatherData.timezone));
         sb.append(formatWeeklyForecast(weatherData.daily));
         
         return sb.toString();
@@ -107,17 +109,22 @@ public class WeatherFormatter {
         return sb.toString();
     }
 
-    private String formatHourlyForecast(HourlyWeather hourly) {
+    private String formatHourlyForecast(HourlyWeather hourly, String timezone) {
         StringBuilder sb = new StringBuilder();
         
         sb.append("⏰ HOURLY FORECAST (Next 12 hours)\n");
         sb.append("\n");
         
-        LocalDateTime now = LocalDateTime.now();
+        // Get current time in the location's timezone
+        ZoneId zoneId = ZoneId.of(timezone);
+        ZonedDateTime now = ZonedDateTime.now(zoneId);
         int hourCount = 0;
         
         for (int i = 0; i < hourly.time.size() && hourCount < 12; i++) {
-            LocalDateTime hourTime = LocalDateTime.parse(hourly.time.get(i), HOUR_FORMATTER);
+            // Parse the time string and add timezone information
+            LocalDateTime localHourTime = LocalDateTime.parse(hourly.time.get(i), HOUR_FORMATTER);
+            ZonedDateTime hourTime = localHourTime.atZone(zoneId);
+            
             if (hourTime.isAfter(now) || hourTime.isEqual(now)) {
                 double temp = hourly.temperature_2m.get(i);
                 double feelsLike = hourly.apparent_temperature.get(i);

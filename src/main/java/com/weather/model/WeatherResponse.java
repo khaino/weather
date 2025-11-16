@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class WeatherResponse {
+    public String timezone;
     public DailyWeather daily;
     public HourlyWeather hourly;
 }
